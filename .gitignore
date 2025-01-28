@@ -4,3 +4,5 @@
 
 # build
 /Firmware/build*/
+/Firmware/debug*/
+/Firmware/release*/

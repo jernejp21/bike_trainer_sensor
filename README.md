@@ -18,7 +18,8 @@ This sensor uses Bluetooth LE protocol with Cycling Speed and Cadence Profile, w
 1. After cloning git repository, open `Firmware.code-workspace` with VS Code.
 2. Go to nRF Connect and create *build configuration*. Under APPLICATIONS add build the configuration.
    - Board: `nrf52840dk_nrf52840` or other board.
-   - Build directory name: `build`
-   - Enable debug options
+   - Build directory name: `release` or `debug`
+   - Select *Base configuration files*: `prj_release.conf` or `prj_debug.conf`
+   - Select *Extra Kconfig fragmetns*: `bt.conf`
 
 For API and how to, check [Nordic's developer website](https://docs.nordicsemi.com/bundle/ncs-2.9.0/page/nrf/index.html).

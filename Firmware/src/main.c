@@ -9,8 +9,12 @@
 #include <stddef.h>
 #include <string.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/retained_mem.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/crc.h>
+#include <zephyr/sys/poweroff.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/types.h>
 
@@ -23,24 +27,41 @@
 
 /* Global variables section */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
 typedef struct __attribute__((packed))
 {
   uint8_t flags;
   uint32_t wheel_revolution;
   uint16_t last_event_time;
+  /* CRC used to validate the retained data.  This must be
+   * stored little-endian, and covers everything up to but not
+   * including this field.
+   */
+  uint32_t crc;
 } csc_measurement_t;
+
 csc_measurement_t cscm_data;
 
+#if IS_ENABLED(CONFIG_DEBUG_INFO)
 static const struct gpio_dt_spec user_led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const struct gpio_dt_spec user_switch = GPIO_DT_SPEC_GET(DT_ALIAS(sw3), gpios);
+#endif
+static const struct gpio_dt_spec user_switch = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
 
 static struct gpio_callback switch_cb_data;
 
 uint64_t curr_time;  // ms
 uint64_t prev_time;  // ms
 #define DEBOUNCE_TIME_MS 10
+#define SHUTDOWN_TIME_S 60
 
 uint16_t send_notify_flag;
+
+void shutdown_cb(struct k_timer* timer);
+K_TIMER_DEFINE(shutdown_timer, shutdown_cb, NULL);
+
+const static struct device* retained_mem_device = DEVICE_DT_GET(DT_ALIAS(retainedmemdevice));
+void retained_update(void);
+void retained_validate(void);
 /* End of global variables section */
 
 /* Bluetooth section */
@@ -80,7 +101,7 @@ static ssize_t write_sc(struct bt_conn* conn,
   return len;
 }
 
-/* Cycling Speed and Cadence Service Declaration */
+// Cycling Speed and Cadence Service Declaration
 BT_GATT_SERVICE_DEFINE(csc_svc,
                        BT_GATT_PRIMARY_SERVICE(BT_UUID_CSC),
                        BT_GATT_CHARACTERISTIC(BT_UUID_CSC_MEASUREMENT, BT_GATT_CHRC_NOTIFY,
@@ -137,33 +158,88 @@ static void switch_cb_func(const struct device* port, struct gpio_callback* cb, 
   curr_time = k_uptime_get();
   if((curr_time - prev_time) > DEBOUNCE_TIME_MS)
   {
+    k_timer_start(&shutdown_timer, K_SECONDS(SHUTDOWN_TIME_S), K_NO_WAIT);
     cscm_data.wheel_revolution++;
     cscm_data.last_event_time += (uint16_t)((curr_time - prev_time) & 0xFFFF);
+#if IS_ENABLED(CONFIG_DEBUG_INFO)
+    gpio_pin_toggle_dt(&user_led);
+#endif
     prev_time = curr_time;
   }
 }
 /* End of GPIO section */
+
+void shutdown_cb(struct k_timer* timer)
+{
+#if IS_ENABLED(CONFIG_DEBUG_INFO)
+  gpio_pin_set_dt(&user_led, 0);
+#endif
+  retained_update();
+  gpio_pin_interrupt_configure_dt(&user_switch, GPIO_INT_DISABLE);
+  gpio_pin_interrupt_configure_dt(&user_switch, GPIO_INT_LEVEL_LOW);
+  sys_poweroff();
+  while(1);
+}
+
+#define RETAINED_CRC_OFFSET offsetof(csc_measurement_t, crc)
+#define RETAINED_CHECKED_SIZE (RETAINED_CRC_OFFSET + sizeof(cscm_data.crc))
+
+void retained_validate(void)
+{
+  retained_mem_read(retained_mem_device, 0, (uint8_t*)&cscm_data, sizeof(cscm_data));
+
+  /* The residue of a CRC is what you get from the CRC over the
+   * message catenated with its CRC.  This is the post-final-xor
+   * residue for CRC-32 (CRC-32/ISO-HDLC) which Zephyr calls
+   * crc32_ieee.
+   */
+  const uint32_t residue = 0x2144df1c;
+  uint32_t crc = crc32_ieee((const uint8_t*)&cscm_data, RETAINED_CHECKED_SIZE);
+  bool valid = (crc == residue);
+
+  /* If the CRC isn't valid, reset the retained data. */
+  if(!valid)
+  {
+    memset(&cscm_data, 0, sizeof(cscm_data));
+  }
+}
+
+void retained_update(void)
+{
+  uint32_t crc = crc32_ieee((const uint8_t*)&cscm_data, RETAINED_CRC_OFFSET);
+
+  cscm_data.crc = sys_cpu_to_le32(crc);
+
+  retained_mem_write(retained_mem_device, 0, (uint8_t*)&cscm_data, sizeof(cscm_data));
+}
 
 int main(void)
 {
   LOG_INF("Start of main.");
   int err;
 
+#if IS_ENABLED(CONFIG_DEBUG_INFO)
   if(!gpio_is_ready_dt(&user_led))
   {
     return 0;
   }
+  gpio_pin_configure_dt(&user_led, GPIO_OUTPUT_ACTIVE);
+#endif
   if(!gpio_is_ready_dt(&user_switch))
   {
     return 0;
   }
-
-  gpio_pin_configure_dt(&user_led, GPIO_OUTPUT_ACTIVE);
   gpio_pin_configure_dt(&user_switch, GPIO_INPUT);
-  gpio_pin_interrupt_configure_dt(&user_switch, GPIO_INT_EDGE_TO_ACTIVE);
+  gpio_pin_interrupt_configure_dt(&user_switch, GPIO_INT_EDGE_FALLING);
 
   gpio_init_callback(&switch_cb_data, switch_cb_func, BIT(user_switch.pin));
   gpio_add_callback_dt(&user_switch, &switch_cb_data);
+
+  retained_validate();
+
+  cscm_data.flags = 1;  // Wheel Revolution Data Present
+
+  k_timer_start(&shutdown_timer, K_SECONDS(SHUTDOWN_TIME_S), K_NO_WAIT);
 
   err = bt_enable(NULL);
   if(err)
@@ -173,8 +249,6 @@ int main(void)
   }
 
   bt_ready();
-
-  cscm_data.flags = 1;  // Wheel Revolution Data Present
 
   while(1)
   {
