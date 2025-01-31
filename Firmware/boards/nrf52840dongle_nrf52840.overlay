@@ -18,7 +18,7 @@
 
 	buttons {
 		reedswitch0: reed-switch {
-			gpios = <&gpio0 31 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			gpios = <&gpio1 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 			label = "Reed switch";
 		};
 	};

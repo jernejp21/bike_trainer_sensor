@@ -1,0 +1,24 @@
+#
+# Copyright (c) 2025 Jernej Pangerc
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+mainmenu "Bike trainer type"
+
+config USE_FTMS
+	bool "Enable Fitnes Machine service"
+	help
+	  Use this if you are making a power meter - place the sensor
+	  on a bike trainer. This service proveds power, speed and other
+	  data to the smartphone or other client.
+
+config USE_CSC
+	bool "Enable Cycling Speed and Cadence service"
+	default n
+	help
+	  Use this if you are making a speed sensor - place the sensor
+	  on a bike rim. This service doesn't calculate bike speed.
+	  Bike speed is calculated by a smartphone or other client.
+
+source "Kconfig.zephyr"
