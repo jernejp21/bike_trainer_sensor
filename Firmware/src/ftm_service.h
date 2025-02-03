@@ -1,4 +1,4 @@
-/* main.c - Application main entry point */
+/* ftm_service.h - Fitness Machine Service module */
 
 /*
  * Copyright (c) 2025 Jernej Pangerc
@@ -72,20 +72,20 @@
 typedef struct __attribute__((packed))
 {
   uint16_t flags;
-  uint16_t inst_speed; /* km/h, resolution 0.01 km/h */
-  uint16_t avg_speed; /* km/h, resolution 0.01 km/h */
+  //uint16_t inst_speed; /* km/h, resolution 0.01 km/h */
+  //uint16_t avg_speed; /* km/h, resolution 0.01 km/h */
   //uint16_t inst_cadence; /* 1/min, resolution 0.5 min^-1*/
   //uint16_t avg_cadence; /* 1/min, resolution 0.5 min^-1*/
-  uint8_t total_dist[3]; /* m, resolution 1 m */
+  //uint8_t total_dist[3]; /* m, resolution 1 m */
   //uint8_t resistance_lvl; /* no unit, resolution 0.1 */
-  //int16_t inst_power; /* W, resolution 1 W */
+  int16_t inst_power; /* W, resolution 1 W */
   //int16_t avg_power; /* W, resolution 1 W */
   //uint16_t total_energy; /* cal, resolution 1 cal */
   //uint16_t energy_per_hour; /* cal, resolution 1 cal */
   //uint8_t energy_per_minute; /* cal, resolution 1 cal */
   //uint8_t heart_rate; /* BPM, resolution 1 BMP */
   //uint8_t metabolic_eqv;
-  uint16_t elapsed_time; /* s, resolution 1 s */
+  //uint16_t elapsed_time; /* s, resolution 1 s */
   //uint16_t remaining_time; /* s, resolution 1 s */
   /* CRC used to validate the retained data.  This must be
    * stored little-endian, and covers everything up to but not

@@ -33,8 +33,6 @@ static struct gpio_callback switch_cb_data;
 
 uint64_t curr_time;  // ms
 uint64_t prev_time;  // ms
-#define DEBOUNCE_TIME_MS 10
-#define SHUTDOWN_TIME_S 60
 
 uint16_t send_notify_flag;
 
@@ -46,13 +44,14 @@ K_TIMER_DEFINE(shutdown_timer, shutdown_cb, NULL);
 static const struct bt_data advertisement[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA_BYTES(BT_DATA_UUID16_ALL,
-#if IS_ENABLED(CONFIG_USE_CSC)
+#if IS_ENABLED(CONFIG_USE_CSCS)
                   BT_UUID_16_ENCODE(BT_UUID_CSC_VAL)),
-#else
+#elif IS_ENABLED(CONFIG_USE_FTMS)
                   BT_UUID_16_ENCODE(BT_UUID_FMS_VAL)),
+    BT_DATA_BYTES(BT_DATA_SVC_DATA16, BT_UUID_16_ENCODE(BT_UUID_FMS_VAL), 0x01, 0x20, 0x00),  // indoor bike
+#elif IS_ENABLED(CONFIG_USE_CPS)
+                  BT_UUID_16_ENCODE(BT_UUID_CPS_VAL)),
 #endif
-    BT_DATA_BYTES(BT_DATA_SVC_DATA16, BT_UUID_16_ENCODE(BT_UUID_FMS_VAL), 0x01, 0x20, 0x00),
-
 };
 
 static const struct bt_data scan_response[] = {
@@ -102,9 +101,9 @@ static void bt_ready(void)
 static void switch_cb_func(const struct device* port, struct gpio_callback* cb, gpio_port_pins_t pins)
 {
   curr_time = k_uptime_get();
-  if((curr_time - prev_time) > DEBOUNCE_TIME_MS)
+  if((curr_time - prev_time) > CONFIG_SWITCH_DEBOUNCE_TIME_MS)
   {
-    k_timer_start(&shutdown_timer, K_SECONDS(SHUTDOWN_TIME_S), K_NO_WAIT);
+    k_timer_start(&shutdown_timer, K_SECONDS(CONFIG_SHUTDOWN_TIME_S), K_NO_WAIT);
     uint16_t time = (uint16_t)((curr_time - prev_time) & 0xFFFF);
     update_service_data(time);
 #if IS_ENABLED(CONFIG_DEBUG_INFO)
@@ -153,7 +152,7 @@ int main(void)
 
   init_service_data();
 
-  k_timer_start(&shutdown_timer, K_SECONDS(SHUTDOWN_TIME_S), K_NO_WAIT);
+  k_timer_start(&shutdown_timer, K_SECONDS(CONFIG_SHUTDOWN_TIME_S), K_NO_WAIT);
 
   err = bt_enable(NULL);
   if(err)
@@ -177,7 +176,7 @@ int main(void)
 
 /* Test thread for simulating spinning wheel. */
 /*
-uint16_t millis = 1000;
+uint16_t millis = 50;
 void sim_tread(void)
 {
   while(1)

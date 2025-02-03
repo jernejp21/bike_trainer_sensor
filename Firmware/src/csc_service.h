@@ -1,4 +1,4 @@
-/* main.c - Application main entry point */
+/* csc_service.h - Cycling Speed and Cadence Service module */
 
 /*
  * Copyright (c) 2025 Jernej Pangerc

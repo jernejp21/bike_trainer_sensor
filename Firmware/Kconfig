@@ -4,8 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-mainmenu "Bike trainer type"
+menu "Bike trainer"
 
+choice
+	prompt "Select sensor type"
 config USE_FTMS
 	bool "Enable Fitnes Machine service"
 	help
@@ -13,12 +15,42 @@ config USE_FTMS
 	  on a bike trainer. This service proveds power, speed and other
 	  data to the smartphone or other client.
 
-config USE_CSC
+config USE_CSCS
 	bool "Enable Cycling Speed and Cadence service"
-	default n
 	help
 	  Use this if you are making a speed sensor - place the sensor
 	  on a bike rim. This service doesn't calculate bike speed.
 	  Bike speed is calculated by a smartphone or other client.
+
+config USE_CPS
+	bool "Enable Cycling Power service"
+	help
+	  Use this if you are making a power meter sensor.
+	  This service doesn't calculate bike speed.
+	  Bike speed is calculated by a smartphone or other client.
+endchoice
+
+config ROLLER_DIAMETER
+	int "Roller diameter"
+	depends on USE_FTMS
+	help
+	  Roller diameter in mm. Round to nearest integer. Used for indoor bike
+	  to calculate speed and power. Roller is trainer's roller size.
+
+config SWITCH_DEBOUNCE_TIME_MS
+	int "Switch debounce time in ms"
+	default 1
+	help
+	  Debounce time of a reed switch. If using quality switches, you can leave
+	  default value. If using cheap switches, adjust the value.
+
+config SHUTDOWN_TIME_S
+	int "Shutdown time in s"
+	default 60
+	help
+	  If there are no signals sensed on the sensor, the MCU will go to
+	  system off after shutdown time.
+
+endmenu
 
 source "Kconfig.zephyr"

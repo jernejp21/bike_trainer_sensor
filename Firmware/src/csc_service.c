@@ -1,4 +1,4 @@
-/* main.c - Application main entry point */
+/* csc_service.c - Cycling Speed and Cadence Service module */
 
 /*
  * Copyright (c) 2025 Jernej Pangerc
@@ -11,7 +11,7 @@
 #include <zephyr/drivers/retained_mem.h>
 #include <zephyr/sys/byteorder.h>
 
-#if IS_ENABLED(CONFIG_USE_CSC)
+#if IS_ENABLED(CONFIG_USE_CSCS)
 
 #define RETAINED_CRC_OFFSET offsetof(csc_measurement_t, crc)
 #define RETAINED_CHECKED_SIZE (RETAINED_CRC_OFFSET + sizeof(cscm_data.crc))

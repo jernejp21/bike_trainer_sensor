@@ -1,4 +1,4 @@
-/* main.c - Application main entry point */
+/* ftm_service.c - Fitness Machine Service module */
 
 /*
  * Copyright (c) 2025 Jernej Pangerc
@@ -7,6 +7,8 @@
  */
 
 #include "ftm_service.h"
+#include "trainers/kinetic_road_machine.h"
+#include <math.h>
 #include <zephyr/drivers/retained_mem.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/crc.h>
@@ -18,6 +20,9 @@
 const static struct device* retained_mem_device = DEVICE_DT_GET(DT_ALIAS(retainedmemdevice));
 
 indoor_bike_data_t indoor_bike_data;
+
+float inst_speed;
+uint16_t floor, ceil, power;
 
 static void ibdc_ccc_cfg_changed(const struct bt_gatt_attr* attr, uint16_t value)
 {
@@ -31,7 +36,7 @@ static ssize_t read_fm_feature(struct bt_conn* conn,
                                uint16_t offset)
 {
   uint32_t fm_feature[2];
-  fm_feature[0] = FMF_AVG_SPEED | FMF_ELAPSED_TIME | FMF_TOTAL_DIST; /* fitness machine features */
+  fm_feature[0] = FMF_POWER_MEASURMENT; /* fitness machine features */
   fm_feature[1] = 0; /* target setting features */
   return bt_gatt_attr_read(conn, attr, buf, len, offset, &fm_feature, sizeof(fm_feature));
 }
@@ -52,9 +57,25 @@ void notify_service(void)
   bt_gatt_notify(NULL, &ftm_svc.attrs[3], &indoor_bike_data, data_len);
 }
 
-void update_service_data(uint16_t time)
+/* This function is called from ISR, so it must be quick. */
+void update_service_data(uint16_t time_ms)
 {
-  
+  inst_speed = ((float)(M_PI * CONFIG_ROLLER_DIAMETER) / (float)time_ms * (float)3.6);  // km/h
+
+  floor = (int16_t)(inst_speed / 10);  // floor to nearest 10 and get index
+  ceil = floor + 1;  // ceil to nearest 10 and get index
+
+  /* Use liner interpolation to calculate power between defined values. */
+  /* y = (y0(x1-x) + y1(x-x0)) / (x1-x0) */
+  /* y0 = powere_curve[floor] */
+  /* y1 = powere_curve[ceil] */
+  /* x0 = floor*10 (floor speed rounded to 10) */
+  /* x1 = ceil*10 (ceil speed rounded to 10) */
+  /* x = inst_speed */
+  /* x1-x0 is alway 10, since we have steps of 10 km/h. */
+  power = (uint16_t)((power_curve[floor] * (ceil * 10 - inst_speed) + power_curve[ceil] * (inst_speed - floor * 10)) / 10);
+
+  indoor_bike_data.inst_power = power;
 }
 
 void retained_validate(void)
@@ -88,6 +109,6 @@ void retained_update(void)
 
 void init_service_data(void)
 {
-  indoor_bike_data.flags = IBD_FLAG_AVG_SPEED | IBD_FLAG_ELAPSED_TIME | IBD_FLAG_TOTAL_DIST;  // Wheel Revolution Data Present
+  indoor_bike_data.flags = IBD_FLAG_INST_SPEED_NOT_PRESENT | IBD_FLAG_INST_POWER;
 }
 #endif  // IS_ENABLED(CONFIG_USE_FTMS)
