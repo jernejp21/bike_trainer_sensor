@@ -31,8 +31,7 @@ static const struct gpio_dt_spec user_switch = GPIO_DT_SPEC_GET(DT_ALIAS(reedswi
 
 static struct gpio_callback switch_cb_data;
 
-uint64_t curr_time;  // ms
-uint64_t prev_time;  // ms
+static uint64_t curr_time, prev_time;  // ms
 
 uint16_t send_notify_flag;
 

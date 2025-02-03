@@ -21,8 +21,9 @@ const static struct device* retained_mem_device = DEVICE_DT_GET(DT_ALIAS(retaine
 
 indoor_bike_data_t indoor_bike_data;
 
-float inst_speed;
+float roller_rotations, inst_speed;
 uint16_t floor, ceil, power;
+static int64_t curr_time, prev_time;  // ms
 
 static void ibdc_ccc_cfg_changed(const struct bt_gatt_attr* attr, uint16_t value)
 {
@@ -53,14 +54,10 @@ BT_GATT_SERVICE_DEFINE(ftm_svc,
 
 void notify_service(void)
 {
-  uint16_t data_len = sizeof(indoor_bike_data) - sizeof(indoor_bike_data.crc);
-  bt_gatt_notify(NULL, &ftm_svc.attrs[3], &indoor_bike_data, data_len);
-}
-
-/* This function is called from ISR, so it must be quick. */
-void update_service_data(uint16_t time_ms)
-{
-  inst_speed = ((float)(M_PI * CONFIG_ROLLER_DIAMETER) / (float)time_ms * (float)3.6);  // km/h
+  /* We calculate speed based on distance and time between notifications. */
+  curr_time = k_uptime_get();
+  int64_t delta = curr_time - prev_time;
+  inst_speed = (float)(M_PI * CONFIG_ROLLER_DIAMETER) * roller_rotations / (float)delta * (float)3.6;  // km/h
 
   floor = (int16_t)(inst_speed / 10);  // floor to nearest 10 and get index
   ceil = floor + 1;  // ceil to nearest 10 and get index
@@ -76,6 +73,21 @@ void update_service_data(uint16_t time_ms)
   power = (uint16_t)((power_curve[floor] * (ceil * 10 - inst_speed) + power_curve[ceil] * (inst_speed - floor * 10)) / 10);
 
   indoor_bike_data.inst_power = power;
+
+  uint16_t data_len = sizeof(indoor_bike_data) - sizeof(indoor_bike_data.crc);
+  bt_gatt_notify(NULL, &ftm_svc.attrs[3], &indoor_bike_data, data_len);
+
+  unsigned int key = irq_lock();
+  roller_rotations = 0;
+  irq_unlock(key);
+
+  prev_time = curr_time;
+}
+
+/* This function is called from ISR, so it must be quick. */
+void update_service_data(uint16_t time_ms)
+{
+  roller_rotations++;
 }
 
 void retained_validate(void)
