@@ -25,7 +25,7 @@
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 #if IS_ENABLED(CONFIG_DEBUG_INFO)
-static const struct gpio_dt_spec user_led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec user_led = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
 #endif
 static const struct gpio_dt_spec user_switch = GPIO_DT_SPEC_GET(DT_ALIAS(reedswitch), gpios);
 
