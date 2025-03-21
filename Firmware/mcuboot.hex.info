@@ -1,0 +1,9 @@
+Algorithm : SHA256
+Hash      : 9A2AF5F3E4558B81E6457495C7BBAA9BB639757214AB80C3CB6ED3378FD2804F
+File      : mcuboot.hex
+
+MCUboot start address: 0x1000
+MCUboot size: 0xE698
+App start address: 0x11000
+Signature type: RSA
+Key: mcuboot/root-rsa-2048.pem

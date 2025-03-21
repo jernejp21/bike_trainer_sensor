@@ -174,7 +174,7 @@ int main(void)
 }
 
 /* Test thread for simulating spinning wheel. */
-/*
+#if IS_ENABLED(CONFIG_DEBUG_INFO)
 uint16_t millis = 50;
 void sim_tread(void)
 {
@@ -188,4 +188,4 @@ void sim_tread(void)
 #define SIM_THREAD_STACKSIZE 512
 #define SIM_THREAD_PRIORITY 2
 K_THREAD_DEFINE(sim_tread_id, SIM_THREAD_STACKSIZE, sim_tread, NULL, NULL, NULL, SIM_THREAD_PRIORITY, 0, 0);
-*/
+#endif
