@@ -3,11 +3,15 @@
 		"C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, BreakBeforeBraces: Allman, BraceWrapping: {BeforeWhile: false}, AllowShortLoopsOnASingleLine: true, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 0, SpaceBeforeParens: false, PointerAlignment: Left, AlignTrailingComments: false, SpacesBeforeTrailingComments: 2 }",
 		"nrf-connect.applications": [
 			"${workspaceFolder}"
-		]
+		],
+		"nrf-connect.activeAppFollowActiveEditor": true
 	},
 	"folders": [
 		{
-			"path": "."
+			"path": ".",
+		},
+		{
+			"path": "../"
 		}
 	]
 	
