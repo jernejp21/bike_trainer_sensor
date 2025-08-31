@@ -53,4 +53,9 @@ config SHUTDOWN_TIME_S
 
 endmenu
 
+config BT_DIS_FW_REV_STR
+	string
+	depends on BT_DIS_FW_REV
+	default "$(APPVERSION)"
+
 source "Kconfig.zephyr"
